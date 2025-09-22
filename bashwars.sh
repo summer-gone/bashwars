@@ -295,11 +295,11 @@ fi
 }
 
 messages=(
-    "👮 Border Patrol seizes a huge shipment!"
-    "🔥 Warehouse fire burns through stock!"
-    "👽 Feds intercept a major delivery!"
-    "⚔️ Gang war stops supply!"
-    "🫨 Panic causes supply run!"
+    "👮 Border Patrol seizes a huge shipment..."
+    "🔥 Warehouse fire burns through stock..."
+    "👽 Feds intercept a major delivery..."
+    "⚔️ Gang war affects supply..."
+    "🫨 Panic causes supply run..."
 )
 
 random_message() {
