@@ -61,13 +61,12 @@ new_prices() {
   done
 }
 
-# Handles random events that can occur skipping a day
 newday_event() {
   local roll=$((RANDOM % 100))
   if (( roll < 5 )); then
     echo "🔫 You got hit at home! They took the whole stash!"
     for i in "${!inventory[@]}"; do
-      inventory[$i]=$(( inventory[$i] * 0 ))
+      inventory[$i]=0
     done
   elif (( roll < 15 )); then
     echo "🚨 Police raid! They found half your stash."
@@ -79,7 +78,7 @@ newday_event() {
       echo "💰 You got hit at home! They stole \$500!"
       money=$(( money - 500 ))
     else
-      echo "💰 You got hit at home! They stole $money!"
+      echo "💰 You got hit at home! They stole \$$money!"
       money=0
     fi
   elif (( roll < 40 )); then
@@ -87,21 +86,22 @@ newday_event() {
     # Only trigger a spike if one isn't already active for this item
     if (( spike_duration[$idx] == 0 )); then
       echo "🌝 A peaceful evening."
-      echo "📈 Market spike! Prices for ${items[$idx]} skyrocket!"
+      random_message
+      echo "📈 Prices for ${items[$idx]} skyrocket!"
       prices[$idx]=$(( prices[$idx] * 2 ))
       spike_duration[$idx]=$(( 2 + RANDOM % 2 )) # Spike for 2-3 days
     fi
   else
     echo "🌝 A peaceful evening."
   fi
+
   # Tick down the duration of any active market spikes
   for i in "${!spike_duration[@]}"; do
     if (( spike_duration[$i] > 0 )); then
       spike_duration[$i]=$(( spike_duration[$i] - 1 ))
       if (( spike_duration[$i] == 0 )); then
-        # Price returns to normal after a spike
-        prices[$i]=$(( (RANDOM % (price_max[$i] - price_min[$i] + 1)) + price_min[$i] ))
         echo "📉 The ${items[$i]} market stabilizes."
+        new_prices   # regenerate normally instead of using old min/max arrays
       fi
     fi
   done
@@ -307,9 +307,30 @@ random_message() {
     echo "${messages[$index]}"
 }
 
+# Function to check if player is completely broke
+broke() {
+  # Check money and bank first
+  if (( money == 0 && bank == 0 )); then
+    # Now check inventory
+    for item in "${inventory[@]}"; do
+      if (( item != 0 )); then
+        return 1  # Not completely broke
+      fi
+    done
+    return 0  # All checks passed: completely broke
+  else
+    return 1  # money or bank not zero
+  fi
+}
+
 # -------- MAIN GAME LOOP -------- #
 new_prices # Generate initial prices for the first day
 while (( days > 0 )); do
+  if broke; then
+    echo "😭 You're broke!"
+    days=0
+    break
+  fi
   show_status
   echo "Actions: [B]uy, [S]ell, [T]ravel, Ban[k], [N]ext Day, [Q]uit"
   read -r action
@@ -355,10 +376,12 @@ echo "-------------------"
 echo "Final Net Worth: \$$final_score"
 echo
 
-if (( final_score > 2000 )); then
+if (( final_score > 6000 )); then
   echo "Your Rank: Level 99 BOSS"
+elif (( final_score > 3000 )); then
+  echo "Your Rank: Level 60 Capo"
 elif (( final_score > 0 )); then
-  echo "Your Rank: Level 50 Gangster"
+  echo "Your Rank: Level 35 Gangster"
 else
   echo "Your Rank: Level 1 Thug"
 fi
