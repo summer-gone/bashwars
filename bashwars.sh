@@ -1,6 +1,4 @@
 #!/bin/bash
-# VIBE WARS - LLM Coded Drug Wars clone in BASH
-#
 
 echo " _______    ______    ______   __    __        __       __   ______   _______    ______  ";
 echo "|       \\  /      \\  /      \\ |  \\  |  \\      |  \\  _  |  \\ /      \\ |       \\  /      \\ ";
@@ -35,7 +33,7 @@ travels_today=0
 
 # Define base prices and standard deviations for each item
 base_price=(250 400 600 1000 1400)
-std_dev=(50 80 100 200 200)
+std_dev=(70 90 110 130 150)
 
 # --- Core Function ---
 new_prices() {
@@ -77,9 +75,13 @@ newday_event() {
       inventory[$i]=$(( inventory[$i] / 2 ))
     done
   elif (( roll < 25 )); then
-    echo "💰 You got hit at home! They stole \$500!"    
-    money=$(( money - 500 ))
-    (( money < 0 )) && money=0 # Ensure money doesn't go below zero
+    if (( money > 500 )); then
+      echo "💰 You got hit at home! They stole \$500!"
+      money=$(( money - 500 ))
+    else
+      echo "💰 You got hit at home! They stole $money!"
+      money=0
+    fi
   elif (( roll < 40 )); then
     local idx=$(( RANDOM % ${#items[@]} ))
     # Only trigger a spike if one isn't already active for this item
@@ -257,7 +259,7 @@ bank_menu() {
 travel() {
   # Check if the player has any travels left for the day
   if (( travels_today >= 2 )); then
-    echo "You're too tired to travel again today."
+    echo "😴 You're too tired to travel again today."
     return
   fi
 
