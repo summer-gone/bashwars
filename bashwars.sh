@@ -109,16 +109,13 @@ newday_event() {
 
 travel_event() {
   local roll=$((RANDOM % 100))
-
   if (( roll < 10 )); then
     echo "🔪 You were mugged! You lost \$200."
     money=$(( money - 200 ))
-    (( money < 0 )) && money=0 # Ensure money doesn't go below zero
-  elif (( roll < 15 )); then
-    echo "🚨 Police raid! They found half your stash."
-    for i in "${!inventory[@]}"; do
-      inventory[$i]=$(( inventory[$i] / 2 ))
-    done
+    (( money < 0 )) && money=0 # Stop money going below zero
+  elif (( roll < 20 )); then
+    echo "🚨 Police stop! You're being searched..."
+    hide_item
   fi
 }
 
@@ -140,10 +137,10 @@ show_status() {
 
 # Handles buying items
 buy_item() {
-  read -p "Buy which item number? " choice
+  read -p "Buy item: " choice
   # Validate that the choice is a valid number and within the array bounds
   if ! [[ $choice =~ ^[0-9]+$ ]] || (( choice >= ${#items[@]} )); then
-    echo "Invalid item number."
+    echo "Invalid input."
     return
   fi
 
@@ -153,14 +150,14 @@ buy_item() {
     local max_can_buy=$(( money / price ))
     echo "(You can afford $max_can_buy ${items[$choice]}.)"
   else
-    echo "You can't afford it!"
+    echo "You can't afford it."
     return
   fi
 
   read -p "How many? " amount
   # Validate that the amount is a positive number
   if ! [[ $amount =~ ^[0-9]+$ ]]; then
-      echo "Invalid amount. Please enter a number."
+      echo "Invalid input."
       return
   fi
   # Don't allow buying zero
@@ -174,20 +171,20 @@ buy_item() {
     inventory[$choice]=$(( inventory[choice] + amount ))
     echo "Bought $amount ${items[choice]} for \$$cost."
   else
-    echo "Not enough cash! You need \$$cost but only have \$$money."
+    echo "You can't afford it. (\$$cost)"
   fi
 }
 
 sell_item() {
-  read -p "Sell which item number? " choice
+  read -p "Sell item: " choice
   if ! [[ $choice =~ ^[0-9]+$ ]] || (( choice >= ${#items[@]} )); then
-    echo "Invalid item number."
+    echo "Invalid input."
     return
   fi
 
   read -p "How many? " amount
   if ! [[ $amount =~ ^[1-9][0-9]*$ ]]; then
-    echo "Invalid amount. Enter a positive number."
+    echo "Invalid input."
     return
   fi
 
@@ -200,7 +197,7 @@ sell_item() {
     inventory[$choice]=$(( inventory[choice] - amount ))
     echo "Sold $amount ${items[choice]} for \$$earnings."
   else
-    echo "You don't have that many to sell!"
+    echo "You don't have that many to sell."
   fi
 }
 
@@ -220,7 +217,7 @@ bank_menu() {
         bank=$((bank+amt))
         echo "Deposited \$$amt."
       else
-        echo "Invalid amount or not enough cash."
+        echo "DEPOSIT FAILED: You can't afford it."
       fi
       ;;
     w|W)
@@ -231,11 +228,11 @@ bank_menu() {
         money=$((money+amt))
         echo "Withdrew \$$amt."
       else
-        echo "Invalid amount or not enough in the bank."
+        echo "WITHDRAW FAILED: Balance too low."
       fi
       ;;
     p|P)
-      read -p "Pay how much on your loan? " amt
+      read -p "Loan payment amount: " amt
       # Validate input
       if [[ $amt =~ ^[1-9][0-9]*$ ]] && (( amt <= money )); then
         money=$((money-amt))
@@ -243,14 +240,14 @@ bank_menu() {
         (( debt < 0 )) && debt=0
         echo "Paid \$$amt towards your debt."
       else
-        echo "Invalid amount or not enough cash."
+        echo "PAYMENT FAILED: You can't afford it."
       fi
       ;;
     x|X)
       return
       ;;
     *)
-      echo "Invalid option."
+      echo "Invalid input."
       ;;
   esac
 }
@@ -270,7 +267,7 @@ travel() {
     fi
   done
 
-read -p "Choice: " dest
+read -p "-> " dest
 if [[ $dest =~ ^[0-9]+$ ]] && (( dest < ${#locations[@]} )); then
     if (( dest == current_location )); then
         echo "You're already here! (${locations[$dest]})"
@@ -279,9 +276,9 @@ if [[ $dest =~ ^[0-9]+$ ]] && (( dest < ${#locations[@]} )); then
 
     # Normal travel code
     local travel_cost=50
-    echo "Traveling to ${locations[$dest]}..."
+    echo "🚇 Traveling to ${locations[$dest]}..."
     if (( money < travel_cost )); then
-        echo "You can't afford to travel!"
+        echo "💸 You can't afford a ticket."
         return
     fi
     money=$(( money - travel_cost ))
@@ -290,7 +287,7 @@ if [[ $dest =~ ^[0-9]+$ ]] && (( dest < ${#locations[@]} )); then
     travel_event
     new_prices
 else
-    echo "Invalid destination."
+    echo "Invalid input."
 fi
 }
 
@@ -298,7 +295,7 @@ messages=(
     "👮 Border Patrol seizes a huge shipment..."
     "🔥 Warehouse fire burns through stock..."
     "👽 Feds intercept a major delivery..."
-    "⚔️ Gang war affects supply..."
+    "⚔️ Gang war stops supply..."
     "🫨 Panic causes supply run..."
 )
 
@@ -307,7 +304,50 @@ random_message() {
     echo "${messages[$index]}"
 }
 
-# Function to check if player is completely broke
+
+hide_item() {
+  # End if inventory empty
+  local has_items=0
+  for qty in "${inventory[@]}"; do
+    if (( qty > 0 )); then
+      has_items=1
+      break
+    fi
+  done
+
+  if (( has_items == 0 )); then
+    echo "😎 ...but you’ve got nothing to hide."
+    return
+  fi
+
+  echo "Choose 1 item to hide:"
+  for i in "${!items[@]}"; do
+    echo "  $i) ${items[$i]}"
+  done
+
+  read -p "-> " choice
+  if ! [[ $choice =~ ^[0-9]+$ ]] || (( choice >= ${#items[@]} )); then
+    echo "Invalid input."
+    return
+  fi
+
+  # Zero out all other items
+  for i in "${!inventory[@]}"; do
+    if (( i != choice )); then
+      inventory[$i]=0
+    fi
+  done
+
+  # End message depends on whether they actually had any of the chosen item
+  if (( inventory[$choice] == 0 )); then
+    echo "🚨 They took your whole stash."
+  else
+    echo "😓 You hid the ${items[$choice]}, but lost everything else."
+  fi
+}
+
+
+# End game if player has no money or inventory items
 broke() {
   # Check money and bank first
   if (( money == 0 && bank == 0 )); then
@@ -358,7 +398,7 @@ while (( days > 0 )); do
       fi
       ;;
     *)
-      echo "Invalid action."
+      echo "Invalid input."
       ;;
   esac
 done
