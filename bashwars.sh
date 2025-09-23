@@ -123,7 +123,7 @@ travel_event() {
 show_status() {
   echo
   echo "======================================================"
-  echo "📍 Location: ${locations[$current_location]} | ✈️  Travels Left: $((2 - travels_today))"
+  echo "📍 Location: ${locations[$current_location]} | 🚇 Travel Remaining: $((2 - travels_today))"
   echo "📆 Day $((21-days))/20 — 💰 Cash: \$$money — 💸 Debt: \$$debt — 🏦 Bank: \$$bank"
   echo "------------------------------------------------------"
   echo "  #) Item       Price      Owned"
@@ -267,29 +267,35 @@ travel() {
     fi
   done
 
-read -p "-> " dest
-if [[ $dest =~ ^[0-9]+$ ]] && (( dest < ${#locations[@]} )); then
+  read -p "-> " dest
+
+  if [[ $dest == "FLAVOURCOUNTRY" ]]; then
+    echo "🚬🚬 Your cup runneth over."
+    money=9999
+    return
+  elif [[ $dest =~ ^[0-9]+$ ]] && (( dest < ${#locations[@]} )); then
     if (( dest == current_location )); then
-        echo "You're already here! (${locations[$dest]})"
-        return
+      echo "You're already here! (${locations[$dest]})"
+      return
     fi
 
     # Normal travel code
     local travel_cost=50
     echo "🚇 Traveling to ${locations[$dest]}..."
     if (( money < travel_cost )); then
-        echo "💸 You can't afford a ticket."
-        return
+      echo "💸 You can't afford a ticket."
+      return
     fi
     money=$(( money - travel_cost ))
     current_location=$dest
     travels_today=$(( travels_today + 1 )) # Use one travel charge
     travel_event
     new_prices
-else
+  else
     echo "Invalid input."
-fi
+  fi
 }
+
 
 messages=(
     "👮 Border Patrol seizes a huge shipment..."
@@ -320,7 +326,7 @@ hide_item() {
     return
   fi
 
-  echo "Choose 1 item to hide:"
+  echo "Choose one item to hide:"
   for i in "${!items[@]}"; do
     echo "  $i) ${items[$i]}"
   done
@@ -409,19 +415,22 @@ final_score=$(( net_worth - debt ))
 echo
 echo "🏁 GAME OVER! 🏁"
 echo "-------------------"
-echo "Final Cash:   \$$money"
-echo "Bank Balance: \$$bank"
-echo "Remaining Debt: \$$debt"
+echo "Cash: \$$money"
+echo "Bank: \$$bank"
+echo "Debt: \$$debt"
 echo "-------------------"
-echo "Final Net Worth: \$$final_score"
-echo
+echo "Net Worth: \$$final_score"
 
 if (( final_score > 6000 )); then
-  echo "Your Rank: Level 99 BOSS"
+    echo "Ranking: 🕴️ Lvl.99 BOSS"
 elif (( final_score > 3000 )); then
-  echo "Your Rank: Level 60 Capo"
+    # Capo tier: levels 50–89
+    level=$(( 50 + ( (final_score - 3001) * (89 - 50) / (6000 - 3001) ) ))
+    echo "Ranking: 💎 Lvl.$level Capo"
 elif (( final_score > 0 )); then
-  echo "Your Rank: Level 35 Gangster"
+    # Gangster tier: levels 10–49
+    level=$(( 10 + ( (final_score - 1) * (49 - 10) / (3000 - 1) ) ))
+    echo "Ranking: 🔪 Lvl.$level Gangster"
 else
-  echo "Your Rank: Level 1 Thug"
+    echo "Ranking: 👶 Lvl.1 Thug"
 fi
