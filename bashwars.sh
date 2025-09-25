@@ -125,13 +125,13 @@ newday_event() {
         echo "🔫 You were robbed at home! They took your entire stash."
         inventory=(0 0 0 0 0)
 
-    elif ((roll < 13)); then
+    elif ((roll < 15)); then
         echo "🚨 Police raid! They confiscated half of your stash."
         for i in "${!inventory[@]}"; do
             inventory[$i]=$((inventory[i] / 2))
         done
 
-    elif ((roll < 20)); then
+    elif ((roll < 25)); then
         local loss=$((money > 500 ? 500 : money))
         echo "💰 Thieves broke in! They stole \$$loss!"
         money=$((money - loss))
@@ -194,10 +194,10 @@ hide_item() {
 travel_event() {
     local roll=$((RANDOM % 100))
     if ((roll < 10)); then
-        local loss=$((money > 200 ? 200 : money))
+        local loss=$((money > 300 ? 300 : money))
         echo "🔪 You were mugged on the subway! You lost \$$loss."
         money=$((money - loss))
-    elif ((roll < 20)); then
+    elif ((roll < 25)); then
         echo "🚨 Police are conducting random searches at the station!"
         hide_item
     fi
@@ -289,6 +289,10 @@ loan_menu() {
 
     case $action in
     p | P)
+        if (( debt == 0 )); then
+				    echo "💰 You're debt free!"
+            return
+        fi
         read_input "Pay how much (Debt: \$$debt): " amt
         if ((amt >= debt && amt <= money)); then
             money=$((money - debt))
